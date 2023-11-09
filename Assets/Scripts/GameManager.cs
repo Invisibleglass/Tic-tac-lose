@@ -9,9 +9,12 @@ public class GameManager : Singleton<GameManager>
     private Scene mainMenuScene;
     private Scene gameScene;
 
+    private char ai = 'X';
+    private char user = 'O';
+
     [Header("Placement Array")]
     [SerializeField] private GameObject[] pp = new GameObject[9];
-    private char[] usedPP = new char[9];
+    private char[] usedPP = new char[9] {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '};
 
     [Header("PiecePrefabs")]
     [SerializeField] private GameObject X;
@@ -29,9 +32,21 @@ public class GameManager : Singleton<GameManager>
         }
         if (gameScene == SceneManager.GetActiveScene())
         {
-            pp = GameObject.FindGameObjectsWithTag("PiecePlacement");
+            
         }
     }
+
+    public int[,] WinningCombinations = new int[8, 3]
+    {
+    {0, 1, 2}, // Top row
+    {3, 4, 5}, // Middle row
+    {6, 7, 8}, // Bottom row
+    {0, 3, 6}, // Left column
+    {1, 4, 7}, // Middle column
+    {2, 5, 8}, // Right column
+    {0, 4, 8}, // Diagonal from top-left to bottom-right
+    {2, 4, 6}  // Diagonal from top-right to bottom-left
+    };
 
     public void PlacePP(char XorO, int i)
     {
@@ -46,21 +61,41 @@ public class GameManager : Singleton<GameManager>
 
         usedPP[i] = XorO;
 
-        Debug.Log(usedPP[0] + " " + usedPP[1] + " " + usedPP[2] + " " + usedPP[3] + " " + usedPP[4] + " " + usedPP[5] + " " + usedPP[6] + " " + usedPP[7] + " " + usedPP[8]);
-
         if (XorO == 'O')
         {
             GameObject temp = Instantiate(O);
             temp.transform.position = pp[i].transform.position;
-            FindObjectOfType<MouseInput>().SetCanInteract(false);
-            Debug.Log("placing pp");
+            if (IsWinner(user, usedPP))
+            {
+                SceneManager.LoadScene("WinScene");
+            }
+            else if (FindObjectOfType<AIBill2>().AvailPP(usedPP).Length == 0)
+            {
+                SceneManager.LoadScene("TieScene");
+            }
+            else
+            {
+                FindObjectOfType<MouseInput>().SetCanInteract(false);
+                Debug.Log("placing pp");
+            }
         }
         else
         {
             GameObject temp = Instantiate(X);
             temp.transform.position = pp[i].transform.position;
-            FindObjectOfType<MouseInput>().SetCanInteract(true);
-            Debug.Log("placing pp");
+            if (IsWinner(ai, usedPP))
+            {
+                SceneManager.LoadScene("AiWinScene");
+            }
+            else if (FindObjectOfType<AIBill2>().AvailPP(usedPP).Length == 0)
+            {
+                SceneManager.LoadScene("TieScene");
+            }
+            else
+            {
+                FindObjectOfType<MouseInput>().SetCanInteract(true);
+                Debug.Log("placing pp");
+            }
         }
     }
 
@@ -71,7 +106,7 @@ public class GameManager : Singleton<GameManager>
 
     public bool IsValidMove(int index)
     {
-        if (usedPP[index] == '\0')
+        if (usedPP[index] == ' ')
         {
             return true;
         }
@@ -81,20 +116,18 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    public bool IsWinner(char XorO, char[] board)
+    public bool IsWinner(char player, char[] board)
     {
-        for (int i = 0; i < 3; i++)
+        for (int i = 0; i < 8; i++)
         {
-            //check vertical and horizontal lines
-            if ((board[i] == XorO && board[i + 3] == XorO && board[i + 6] == XorO) || (board[i * 3] == XorO && board[i * 3 + 1] == XorO && board[i * 3 + 2] == XorO))
+            int a = WinningCombinations[i, 0];
+            int b = WinningCombinations[i, 1];
+            int c = WinningCombinations[i, 2];
+
+            if (board[a] == player && board[b] == player && board[c] == player)
             {
                 return true;
             }
-        }
-            //check diagonals
-            if((board[0] == XorO && board[4] == XorO && board[8] == XorO) || (board[2] == XorO && board[4] == XorO && board[6] == XorO))
-        {
-            return true;
         }
 
         return false;

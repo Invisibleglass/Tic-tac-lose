@@ -11,8 +11,8 @@ public class AIBill : MonoBehaviour
 
     private class Move
     {
-        public int index;
-        public int score;
+        public int index = 0;
+        public int score = 0;
     }
 
     // Start is called before the first frame update
@@ -30,86 +30,91 @@ public class AIBill : MonoBehaviour
 
     private void AIBillsTurn(bool newValue)
     {
-        if(!newValue)
+        if (!newValue)
         {
-            int bestMove = BestPP(gameManager.GetUsedPP());
+            int bestMove = SimulatePP(gameManager.GetUsedPP(), ai);
             Debug.Log(bestMove);
             gameManager.PlacePP(ai, bestMove);
             mouseInput.canInteract = true;
         }
     }
 
+    // returns the index of availible Piece Placements
+    private int[] AvailPP(char[] board)
+    {
+        List<int> emptyIndexies = new List<int>();
+
+        for (int i = 0; i < board.Length; i++)
+        {
+            if (board[i] != 'X' && board[i] != 'O')
+            {
+                emptyIndexies.Add(i);
+            }
+        }
+
+        return emptyIndexies.ToArray();
+    }
+
     private int SimulatePP(char[] usedPP, char player)
     {
-        int possibleMoves = 0;
-        for (int i = 0; i < usedPP.Length; i++)
-        {
-            if(usedPP[i] == '\0')
-            {
-                possibleMoves++;
-            }    
-        }
+        //availible spots
+        var availPP = AvailPP(usedPP);
 
         if (gameManager.IsWinner(ai, usedPP) == true)
         {
             //AIBill win statement
-            return -1;
+            return +10;
         }
         else if (gameManager.IsWinner(user, usedPP) == true)
         {
             //Player win statement
-            return +1;
+            return -10;
         }
-        else if (possibleMoves == 0)
+        else if (availPP.Length == 0)
         {
             return 0;
         }
 
-        int bestScore = (player == user) ? int.MinValue : int.MaxValue;
+        // Create a Move array with the same length as availPP
+        Move[] moves = new Move[availPP.Length];
 
-        for (int i = 0; i < usedPP.Length; i++)
+        int bestMove = -1; // Initialize outside of the loop with an invalid value
+        int bestScore;
+
+        if (player == ai)
         {
-            if (usedPP[i] == '\0')
-            {
-                usedPP[i] = player;
-                int score = SimulatePP(usedPP,(player == user) ? ai:user);
-                usedPP[i] = '\0';
+            bestScore = -10000;
+        }
+        else
+        {
+            bestScore = 10000;
+        }
 
-                if (player == user)
+        // Loop through the available Piece Placements
+        for (int i = 0; i < availPP.Length; i++)
+        {
+            // Check if the move is valid
+            if (gameManager.IsValidMove(availPP[i]))
+            {
+                //stores the index of that spot
+                moves[i] = new Move();
+                moves[i].index = usedPP[availPP[i]];
+
+                //sets the empty spot to the current player
+                usedPP[availPP[i]] = player;
+
+                moves[i].score = SimulatePP(usedPP, (player == ai) ? user : ai);
+
+                //reset spot to empty
+                usedPP[availPP[i]] = ' ';
+
+                if ((player == ai && moves[i].score > bestScore) || (player == user && moves[i].score < bestScore))
                 {
-                    bestScore = Mathf.Min(bestScore, score);
-                }
-                else
-                {
-                    bestScore = Mathf.Max(bestScore, score);
+                    bestScore = moves[i].score;
+                    bestMove = availPP[i]; // Store the valid move
                 }
             }
         }
-        return bestScore;
+        return bestMove;
     }
-
-    private int BestPP(char[] usedPP)
-    {
-        int bestScore = -1;
-        int bestPos = -1;
-        int score;
-
-        for (int i = 0; i < usedPP.Length; i++)
-        {
-            if (usedPP[i] == '\0')
-            {
-                usedPP[i] = ai;
-                score = SimulatePP(usedPP, ai);
-                usedPP[i] = '\0';
-
-                if (bestScore < score)
-                {
-                    bestScore = score;
-                    bestPos = i;
-                }
-            }
-        }
-        return bestPos;
-    }
-
 }
